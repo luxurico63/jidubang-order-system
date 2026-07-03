@@ -52,7 +52,8 @@ if address:
     if subtotal_cost > 0:
         st.write(f"## 총 금액: {subtotal_cost:,} THB")
         # 기존의 '주문 확정하기' 버튼 로직 부분을 아래 코드로 교체하세요
-if st.button("주문 확정하기"):
+# 기존 '주문 확정하기' 버튼 로직 부분 (들여쓰기 주의!)
+    if st.button("주문 확정하기"):
         # 1. '주문내역' 시트 불러오기
         try:
             order_sheet = get_sheet().spreadsheet.worksheet("주문내역")
@@ -64,7 +65,7 @@ if st.button("주문 확정하기"):
         import datetime
         now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
-        # 상품목록을 "김치 1개, 두부 2개" 형태로 한 문장으로 만들기
+        # 상품목록을 한 문장으로 만들기
         item_list_str = ", ".join([f"{item['name']} {item['qty']}개" for item in selected_items])
         
         # 3. 한 행에 데이터 합쳐서 저장
@@ -75,6 +76,10 @@ if st.button("주문 확정하기"):
             subtotal_cost
         ])
     
-    st.success(f"🎉 주문이 접수되었습니다!")    
+        # 들여쓰기를 if문 안쪽으로 맞춰야 해!
+        st.success(f"🎉 주문이 접수되었습니다!")
+        st.balloons()
+
+
 else:
     st.info("👆 주소를 입력하면 상품 목록이 나타납니다.")
