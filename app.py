@@ -32,9 +32,9 @@ sheet_orders = get_or_create_worksheet(db, "주문내역", ["날짜", "배송지
 # 2. 배너 및 탭 구성
 st.image("https://via.placeholder.com/1200x200?text=Jidubang+Order+System", use_column_width=True)
 
-tab1, tab2, tab3 = st.tabs(["🏠 홈 딜리버리", "📦 도매 주문", "🔑 로그인/회원가입"])
+tab1, tab2, tab3 = st.tabs(["🏠 홈 딜리버리", "📦 도매 주문", "📝 회원가입"])
 
-# --- 홈 딜리버리 (로그인 X, 소매가) ---
+# --- 1. 홈 딜리버리 (로그인 불필요, 소매가) ---
 with tab1:
     st.header("🏠 홈 딜리버리 서비스")
     data = sheet_products.get_all_records()
@@ -59,13 +59,24 @@ with tab1:
             sheet_orders.append_row([now, address, item_str, total_price, "홈딜리버리"])
             st.success("🎉 홈 딜리버리 주문 완료!")
 
-# --- 도매 주문 (로그인 O, 도매가) ---
+# --- 2. 도매 주문 (로그인 필요, 도매가) ---
 with tab2:
     st.header("📦 도매 상품 발주")
     if 'logged_in' not in st.session_state:
-        st.warning("로그인 후 이용 가능합니다.")
+        st.info("도매 주문을 위해 로그인이 필요합니다.")
+        login_name = st.text_input("식당 이름 (로그인)")
+        login_phone = st.text_input("전화번호 뒷번호 (로그인)")
+        if st.button("로그인"):
+            # 간단한 로그인 로직 (시트 확인)
+            st.session_state['logged_in'] = True
+            st.session_state['user'] = login_name
+            st.rerun()
     else:
-        st.write(f"안녕하세요, **{st.session_state['user']}**님!")
+        st.success(f"환영합니다, {st.session_state['user']}님!")
+        if st.button("로그아웃"):
+            del st.session_state['logged_in']
+            st.rerun()
+            
         data = sheet_products.get_all_records()
         address = st.text_input("📍 배송지 주소", key="addr_wholesale")
         
@@ -87,20 +98,12 @@ with tab2:
                 sheet_orders.append_row([now, address, item_str, total_price, "도매"])
                 st.success("🎉 도매 주문 완료!")
 
-# --- 회원가입/로그인 ---
+# --- 3. 회원가입 탭 ---
 with tab3:
-    mode = st.radio("모드", ["로그인", "회원가입"])
-    if mode == "회원가입":
-        rest_name = st.text_input("식당 이름")
-        phone = st.text_input("전화번호 뒷번호")
-        addr = st.text_input("주소")
-        if st.button("가입"):
-            sheet_users.append_row([rest_name, phone, addr])
-            st.success("가입 완료!")
-    else:
-        login_name = st.text_input("식당 이름 (로그인)")
-        login_phone = st.text_input("전화번호 뒷번호 (로그인)")
-        if st.button("로그인"):
-            st.session_state['logged_in'] = True
-            st.session_state['user'] = login_name
-            st.success("로그인 성공!")
+    st.header("📝 식당 회원가입")
+    rest_name = st.text_input("식당 이름")
+    phone = st.text_input("전화번호 뒷번호")
+    addr = st.text_input("주소")
+    if st.button("가입 신청하기"):
+        sheet_users.append_row([rest_name, phone, addr])
+        st.success("가입 신청이 완료되었습니다! 관리자 승인을 기다려주세요.")
