@@ -35,7 +35,9 @@ if address:
     
     for row in data:
         name = row.get('name', '상품')
-        price = row.get('price_delivery', 0)
+        # [수정] price를 숫자로 강제 변환 (문자라면 숫자로 바꿔줌)
+        price_str = row.get('price_delivery', 0)
+        price = int(price_str) if str(price_str).isdigit() else 0
         
         st.write(f"### {name} ({price} THB)")
         qty = st.number_input(f"{name} 수량", min_value=0, value=0, step=1, key=f"qty_{name}")
