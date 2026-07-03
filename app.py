@@ -1,8 +1,11 @@
 import streamlit as st
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+import datetime
 
-# 1. 연결 설정
+# 1. 설정 및 구글 시트 연결 함수
+st.set_page_config(page_title="지두방 발주 시스템", layout="wide")
+
 def get_sheet():
     creds_dict = dict(st.secrets["gcp"])
     if 'private_key' in creds_dict:
@@ -10,76 +13,67 @@ def get_sheet():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     client = gspread.authorize(creds)
-    return client.open("jidubang_db").sheet1
+    return client.open("jidubang_db")
 
-# 2. 메인 로직
-st.title("📦 지두방 구글 시트 연동 시스템")
+db = get_sheet()
+sheet_products = db.sheet1  # 상품 시트 (name, name_en, price_wholesale, price_retail 순서)
+sheet_users = db.worksheet("회원정보")
+sheet_orders = db.worksheet("주문내역")
 
-# 데이터 불러오기 (캐싱을 사용하여 매번 시트를 열지 않게 최적화)
-@st.cache_data(ttl=60)
-# [수정] ttl=0으로 설정해서, 새로고침할 때마다 구글 시트를 다시 읽게 함
-@st.cache_data(ttl=0) 
-def load_data():
-    sheet = get_sheet()
-    return sheet.get_all_records()
+# 2. 배너 및 탭 구성
+st.image("https://via.placeholder.com/1200x200?text=Jidubang+Order+System", use_column_width=True)
 
-data = load_data()
+tab1, tab2 = st.tabs(["🏠 홈 딜리버리", "🔑 회원가입/로그인"])
 
-# 3. 화면 구현
-address = st.text_input("📍 배송지 주소를 입력하고 엔터를 누르세요")
+# 3. 회원가입/로그인 탭
+with tab2:
+    mode = st.radio("모드 선택", ["로그인", "회원가입"])
+    if mode == "회원가입":
+        st.subheader("식당 회원가입")
+        rest_name = st.text_input("식당 이름")
+        phone_last = st.text_input("대표전화 뒷번호 4자리")
+        address = st.text_input("식당 주소")
+        if st.button("가입 완료"):
+            sheet_users.append_row([rest_name, phone_last, address])
+            st.success(f"{rest_name}님 가입 완료!")
+    else:
+        st.subheader("로그인")
+        login_name = st.text_input("식당 이름")
+        login_phone = st.text_input("전화번호 뒷번호")
+        if st.button("로그인"):
+            st.session_state['logged_in'] = True
+            st.session_state['user'] = login_name
+            st.success("로그인 성공!")
 
-# 주소가 입력되었을 때만 상품 목록 표시
-if address:
-    st.success(f"배송지 확인: {address}")
-    
-    subtotal_cost = 0
-    selected_items = []
-    
-    for row in data:
-        name = row.get('name', '상품')
-        # [수정] price를 숫자로 강제 변환 (문자라면 숫자로 바꿔줌)
-        price_str = row.get('price_delivery', 0)
-        price = int(price_str) if str(price_str).isdigit() else 0
+# 4. 홈 딜리버리 탭 (주문 로직)
+with tab1:
+    st.header("도매 상품 발주")
+    if 'logged_in' not in st.session_state:
+        st.warning("로그인 후 이용 가능합니다.")
+    else:
+        data = sheet_products.get_all_records()
+        address = st.text_input("📍 배송지 주소")
         
-        st.write(f"### {name} ({price} THB)")
-        qty = st.number_input(f"{name} 수량", min_value=0, value=0, step=1, key=f"qty_{name}")
+        selected_items = []
+        total_price = 0
         
-        if qty > 0:
-            selected_items.append({"name": name, "price": price, "qty": qty})
-            subtotal_cost += price * qty
-        st.divider()
-    
-    if subtotal_cost > 0:
-        st.write(f"## 총 금액: {subtotal_cost:,} THB")
-        # 기존의 '주문 확정하기' 버튼 로직 부분을 아래 코드로 교체하세요
-# 기존 '주문 확정하기' 버튼 로직 부분 (들여쓰기 주의!)
-    if st.button("주문 확정하기"):
-        # 1. '주문내역' 시트 불러오기
-        try:
-            order_sheet = get_sheet().spreadsheet.worksheet("주문내역")
-        except:
-            order_sheet = get_sheet().spreadsheet.add_worksheet(title="주문내역", rows="100", cols="4")
-            order_sheet.append_row(["날짜", "배송지", "상품목록", "총금액"])
-
-        # 2. 주문 정보 가공
-        import datetime
-        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        for row in data:
+            name = row['name']
+            name_en = row['name_en'] # 영문 이름 불러오기
+            price = int(row['price_wholesale'])
+            
+            # 상품명 옆에 영문 이름도 같이 표시
+            st.write(f"### {name} ({name_en}) - {price} THB")
+            qty = st.number_input(f"{name} 수량", min_value=0, step=1, key=name)
+            
+            if qty > 0:
+                selected_items.append({"name": name, "qty": qty, "price": price})
+                total_price += price * qty
         
-        # 상품목록을 한 문장으로 만들기
-        item_list_str = ", ".join([f"{item['name']} {item['qty']}개" for item in selected_items])
-        
-        # 3. 한 행에 데이터 합쳐서 저장
-        order_sheet.append_row([
-            now, 
-            address, 
-            item_list_str, 
-            subtotal_cost
-        ])
-    
-        # 들여쓰기를 if문 안쪽으로 맞춰야 해!
-        st.success(f"🎉 주문이 접수되었습니다!")
-        st.balloons()
-
-
-else:
-    st.info("👆 주소를 입력하면 상품 목록이 나타납니다.")
+        if total_price > 0:
+            st.markdown(f"<h1 style='color:red;'>총 금액: {total_price:,} THB</h1>", unsafe_allow_html=True)
+            if st.button("주문 확정하기"):
+                now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                item_str = ", ".join([f"{i['name']} {i['qty']}개" for i in selected_items])
+                sheet_orders.append_row([now, address, item_str, total_price])
+                st.success("🎉 주문이 완료되었습니다!")
