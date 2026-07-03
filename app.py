@@ -6,10 +6,9 @@ import os
 from PIL import Image, ImageDraw, ImageFont
 import io
 
-# 1. 설정 (반드시 가장 먼저 호출해야 함)
+# 1. 설정
 st.set_page_config(page_title="지두방 발주 시스템", layout="centered")
 
-# 2. 구글 시트 연결
 def get_sheet():
     creds_dict = dict(st.secrets["gcp"])
     if 'private_key' in creds_dict:
@@ -24,7 +23,7 @@ sheet_products = db.sheet1
 sheet_users = db.worksheet("회원정보")
 sheet_orders = db.worksheet("주문내역")
 
-# 3. 유틸리티 함수
+# 2. 영수증 생성 함수 (YY/MM/DD 형식)
 def create_receipt_image(restaurant_name, items, total_amount):
     width, height = 500, 400 + (len(items) * 80)
     image = Image.new('RGB', (width, height), 'white')
@@ -59,6 +58,7 @@ def create_receipt_image(restaurant_name, items, total_amount):
 def get_current_time():
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 
+# 3. 주문 폼 함수 (모바일 숫자 입력 최적화)
 def display_order_form(is_wholesale):
     data = sheet_products.get_all_records()
     cats = {}
@@ -79,15 +79,16 @@ def display_order_form(is_wholesale):
                 if img_path: st.image(img_path, use_column_width=True)
                 st.write(f"### {name}")
                 st.write(f"{name_en} / {price} THB")
-                qty_input = st.text_input(f"{name} 수량", value="", key=f"{'w_' if is_wholesale else 'r_'}{name}")
-                qty = int(qty_input) if qty_input and qty_input.isdigit() else 0
+                
+                qty = st.number_input(f"{name} 수량", min_value=0, step=1, value=0, key=f"{'w_' if is_wholesale else 'r_'}{name}")
+                
                 if qty > 0:
-                    selected_items.append({"name": name, "name_en": name_en, "qty": qty, "price": price})
-                    total_price += price * qty
+                    selected_items.append({"name": name, "name_en": name_en, "qty": int(qty), "price": price})
+                    total_price += price * int(qty)
                 st.divider()
     return selected_items, total_price
 
-# 4. 메인 화면
+# 4. 메인 UI
 st.image("https://via.placeholder.com/1200x200?text=Jidubang+Order+System", use_column_width=True)
 tab1, tab2, tab3, tab4 = st.tabs(["🏠 홈 딜리버리", "📦 도매 주문", "📝 회원가입", "⚙️ 관리자"])
 
@@ -115,41 +116,6 @@ with tab1:
 with tab2:
     st.header("📦 도매 주문")
     if not st.session_state['logged_in']:
-        with st.form("login_form"):
-            login_name = st.text_input("식당 이름")
-            login_phone = st.text_input("전화번호 뒷번호")
-            if st.form_submit_button("로그인"):
-                all_users = sheet_users.get_all_values()[1:]
-                user_info = next((u for u in all_users if u[0].strip() == login_name.strip() and u[1].strip() == login_phone.strip()), None)
-                if user_info and user_info[3] == "승인":
-                    st.session_state['logged_in'] = True
-                    st.session_state['user'] = login_name
-                    st.rerun()
-                else: st.error("정보 불일치 혹은 승인 대기 중")
-    else:
-        st.write(f"환영합니다, **{st.session_state['user']}**님!")
-        if st.button("로그아웃"): st.session_state['logged_in'] = False; st.rerun()
-        items, total = display_order_form(True)
-        if total > 0:
-            st.markdown(f"**총 금액: {total:,} THB**")
-            if st.button("도매 주문 확정", key="btn_wholesale"):
-                sheet_orders.append_row([get_current_time(), st.session_state['user'], ", ".join([f"{i['name']} {i['qty']}개" for i in items]), total, "도매"])
-                st.session_state['receipt_bytes'] = create_receipt_image(st.session_state['user'], items, total)
-                st.rerun()
-        if st.session_state['receipt_bytes']:
-            st.image(st.session_state['receipt_bytes'])
-            st.download_button("📥 이미지 저장 및 공유하기", data=st.session_state['receipt_bytes'], file_name="주문영수증_도매.jpg", mime="image/jpeg", key="dl_wholesale")
+        with st.form("login
 
-with tab3:
-    st.header("📝 회원가입")
-    rest_name = st.text_input("식당 이름"); phone = st.text_input("전화번호 뒷번호"); addr = st.text_input("주소")
-    if st.button("가입 신청"):
-        sheet_users.append_row([rest_name, phone, addr, "대기"]); st.success("신청 완료!")
-
-with tab4:
-    st.header("⚙️ 관리자")
-    if st.text_input("비밀번호", type="password") == "4419":
-        for i, row in enumerate(sheet_users.get_all_values()[1:], start=2):
-            if st.button(f"{row[0]} 승인", key=f"app_{i}"): sheet_users.update_cell(i, 4, "승인"); st.rerun()
-
-            
+                     
