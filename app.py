@@ -53,29 +53,28 @@ if address:
         st.write(f"## 총 금액: {subtotal_cost:,} THB")
         # 기존의 '주문 확정하기' 버튼 로직 부분을 아래 코드로 교체하세요
 if st.button("주문 확정하기"):
-    # 1. '주문내역' 시트를 불러오거나 생성
-    # (구글 시트 파일에 '주문내역'이라는 이름의 탭을 미리 하나 만들어두세요!)
-    try:
-        order_sheet = get_sheet().spreadsheet.worksheet("주문내역")
-    except:
-        order_sheet = get_sheet().spreadsheet.add_worksheet(title="주문내역", rows="100", cols="5")
-        order_sheet.append_row(["날짜", "주소", "상품명", "수량", "총금액"])
+        # 1. '주문내역' 시트 불러오기
+        try:
+            order_sheet = get_sheet().spreadsheet.worksheet("주문내역")
+        except:
+            order_sheet = get_sheet().spreadsheet.add_worksheet(title="주문내역", rows="100", cols="4")
+            order_sheet.append_row(["날짜", "배송지", "상품목록", "총금액"])
 
-    # 2. 주문 정보 저장 (현재 시간, 주소, 상품 리스트)
-    import datetime
-    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    for item in selected_items:
+        # 2. 주문 정보 가공
+        import datetime
+        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # 상품목록을 "김치 1개, 두부 2개" 형태로 한 문장으로 만들기
+        item_list_str = ", ".join([f"{item['name']} {item['qty']}개" for item in selected_items])
+        
+        # 3. 한 행에 데이터 합쳐서 저장
         order_sheet.append_row([
             now, 
             address, 
-            item['name'], 
-            item['qty'], 
-            item['qty'] * item['price']
+            item_list_str, 
+            subtotal_cost
         ])
     
-    st.success(f"🎉 주문이 성공적으로 접수되었습니다!")
-    st.balloons() # 축하 풍선 효과
-    
+    st.success(f"🎉 주문이 접수되었습니다!")    
 else:
     st.info("👆 주소를 입력하면 상품 목록이 나타납니다.")
