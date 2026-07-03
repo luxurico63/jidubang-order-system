@@ -34,7 +34,7 @@ st.image("https://via.placeholder.com/1200x200?text=Jidubang+Order+System", use_
 
 tab1, tab2, tab3 = st.tabs(["🏠 홈 딜리버리", "📦 도매 주문", "📝 회원가입"])
 
-# --- 1. 홈 딜리버리 (로그인 불필요, 소매가) ---
+# --- 1. 홈 딜리버리 ---
 with tab1:
     st.header("🏠 홈 딜리버리 서비스")
     data = sheet_products.get_all_records()
@@ -59,7 +59,7 @@ with tab1:
             sheet_orders.append_row([now, address, item_str, total_price, "홈딜리버리"])
             st.success("🎉 홈 딜리버리 주문 완료!")
 
-# --- 2. 도매 주문 (로그인 필요, 도매가) ---
+# --- 2. 도매 주문 (로그인 시 주소 자동 로딩) ---
 with tab2:
     st.header("📦 도매 상품 발주")
     if 'logged_in' not in st.session_state:
@@ -67,18 +67,25 @@ with tab2:
         login_name = st.text_input("식당 이름 (로그인)")
         login_phone = st.text_input("전화번호 뒷번호 (로그인)")
         if st.button("로그인"):
-            # 간단한 로그인 로직 (시트 확인)
-            st.session_state['logged_in'] = True
-            st.session_state['user'] = login_name
-            st.rerun()
+            users = sheet_users.get_all_records()
+            # 식당 이름과 전화번호로 회원 확인
+            user_info = next((u for u in users if u['이름'] == login_name and u['전화번호'] == login_phone), None)
+            if user_info:
+                st.session_state['logged_in'] = True
+                st.session_state['user'] = login_name
+                st.session_state['address'] = user_info['주소']
+                st.rerun()
+            else:
+                st.error("가입된 정보가 없습니다.")
     else:
-        st.success(f"환영합니다, {st.session_state['user']}님!")
+        st.success(f"환영합니다, **{st.session_state['user']}**님!")
         if st.button("로그아웃"):
             del st.session_state['logged_in']
             st.rerun()
             
         data = sheet_products.get_all_records()
-        address = st.text_input("📍 배송지 주소", key="addr_wholesale")
+        # 로그인 시 저장된 주소를 기본값으로 설정
+        address = st.text_input("📍 배송지 주소", value=st.session_state.get('address', ''))
         
         total_price = 0
         selected_items = []
@@ -98,12 +105,12 @@ with tab2:
                 sheet_orders.append_row([now, address, item_str, total_price, "도매"])
                 st.success("🎉 도매 주문 완료!")
 
-# --- 3. 회원가입 탭 ---
+# --- 3. 회원가입 ---
 with tab3:
     st.header("📝 식당 회원가입")
     rest_name = st.text_input("식당 이름")
-    phone = st.text_input("전화번호 뒷번호")
+    phone = st.text_input("전화번호 뒷번호 (4자리)")
     addr = st.text_input("주소")
     if st.button("가입 신청하기"):
         sheet_users.append_row([rest_name, phone, addr])
-        st.success("가입 신청이 완료되었습니다! 관리자 승인을 기다려주세요.")
+        st.success("가입 신청이 완료되었습니다!")
