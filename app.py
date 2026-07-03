@@ -37,7 +37,10 @@ def get_products_by_category(data):
         cats[cat].append(row)
     return cats
 
-# 홈 딜리버리와 도매 주문 모두에서 이미지와 수량 입력이 가능하도록 수정된 함수
+# 시간 포맷을 년/월/일 시:분으로 수정하여 주문 내역 저장
+def get_current_time():
+    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+
 def display_order_form(is_wholesale):
     data = sheet_products.get_all_records()
     cats = get_products_by_category(data)
@@ -84,7 +87,7 @@ with tab1:
         if total > 0:
             st.subheader(f"총 금액: {total:,} THB")
             if st.button("홈 딜리버리 주문 확정", key="btn_home"):
-                sheet_orders.append_row([datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), address, ", ".join([f"{i['name']} {i['qty']}개" for i in items]), total, "홈딜리버리"])
+                sheet_orders.append_row([get_current_time(), address, ", ".join([f"{i['name']} {i['qty']}개" for i in items]), total, "홈딜리버리"])
                 st.success("🎉 주문 완료!")
     else:
         st.info("상품을 보려면 배송지 주소를 입력해 주세요.")
@@ -115,7 +118,7 @@ with tab2:
         if total > 0:
             st.markdown(f"<h1 style='color:red;'>총 금액: {total:,} THB</h1>", unsafe_allow_html=True)
             if st.button("도매 주문 확정", key="btn_wholesale"):
-                sheet_orders.append_row([datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), address, ", ".join([f"{i['name']} {i['qty']}개" for i in items]), total, "도매"])
+                sheet_orders.append_row([get_current_time(), address, ", ".join([f"{i['name']} {i['qty']}개" for i in items]), total, "도매"])
                 st.success("🎉 주문 완료!")
 
 # --- 3. 회원가입 ---
