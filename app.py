@@ -72,7 +72,10 @@ def display_order_form(is_wholesale):
             for row in cats[cat]:
                 name, name_en, img_path = row['name'], row['name_en'], row.get('image_path', '')
                 price = int(row['price_wholesale']) if is_wholesale else int(row['price_retail'])
-                if img_path: st.image(img_path, use_column_width=True)
+                
+                # 수정된 부분: 괄호와 인자 정확히 닫음
+                if img_path: 
+                    st.image(img_path, use_column_width=True)
                 st.write(f"### {name}")
                 st.write(f"{name_en} / {price} THB")
                 qty_input = st.text_input(f"{name} 수량", value="", key=f"{'w_' if is_wholesale else 'r_'}{name}")
@@ -129,6 +132,19 @@ with tab2:
                 st.rerun()
         if st.session_state['receipt_bytes']:
             st.success("🎉 주문 완료!")
-            st.image(
+            st.image(st.session_state['receipt_bytes'])
+            st.download_button("📥 이미지 저장 및 공유하기", data=st.session_state['receipt_bytes'], file_name="주문영수증.jpg", mime="image/jpeg")
+
+with tab3:
+    st.header("📝 회원가입")
+    rest_name = st.text_input("식당 이름"); phone = st.text_input("전화번호 뒷번호"); addr = st.text_input("주소")
+    if st.button("가입 신청"):
+        sheet_users.append_row([rest_name, phone, addr, "대기"]); st.success("신청 완료!")
+
+with tab4:
+    st.header("⚙️ 관리자")
+    if st.text_input("비밀번호", type="password") == "4419":
+        for i, row in enumerate(sheet_users.get_all_values()[1:], start=2):
+            if st.button(f"{row[0]} 승인", key=f"app_{i}"): sheet_users.update_cell(i, 4, "승인"); st.rerun()
 
             
