@@ -87,15 +87,12 @@ with tab1:
     if address:
         items, total = display_order_form(False)
         if total > 0:
-            # 배달비 계산 로직
             delivery_fee = 100 if total < 800 else (50 if total < 1500 else 0)
             final_total = total + delivery_fee
-            
             st.markdown(f"---")
             st.write(f"### 상품 금액: {total:,} THB")
             st.write(f"### 배달비: {delivery_fee:,} THB")
             st.markdown(f"<h1 style='color:red;'>총 결제 금액: {final_total:,} THB</h1>", unsafe_allow_html=True)
-            
             if st.button("홈 딜리버리 주문 확정", key="btn_home"):
                 sheet_orders.append_row([get_current_time(), address, ", ".join([f"{i['name']} {i['qty']}개" for i in items]), final_total, "홈딜리버리"])
                 st.success("🎉 주문 완료!")
@@ -123,12 +120,13 @@ with tab2:
         st.success(f"환영합니다, **{st.session_state['user']}**님!")
         if st.button("로그아웃", key="btn_logout"):
             del st.session_state['logged_in']; st.rerun()
-        address = st.text_input("📍 배송지 주소", value=st.session_state.get('address', ''), key="addr_wholesale_1")
+        st.write(f"📍 배송지: {st.session_state.get('address', '')}")
         items, total = display_order_form(True)
         if total > 0:
             st.markdown(f"<h1 style='color:red;'>총 금액: {total:,} THB</h1>", unsafe_allow_html=True)
             if st.button("도매 주문 확정", key="btn_wholesale"):
-                sheet_orders.append_row([get_current_time(), address, ", ".join([f"{i['name']} {i['qty']}개" for i in items]), total, "도매"])
+                # 식당 이름만 저장
+                sheet_orders.append_row([get_current_time(), st.session_state['user'], ", ".join([f"{i['name']} {i['qty']}개" for i in items]), total, "도매"])
                 st.success("🎉 주문 완료!")
 
 # --- 3. 회원가입 ---
