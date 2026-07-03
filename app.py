@@ -29,7 +29,6 @@ sheet_products = db.sheet1
 sheet_users = get_or_create_worksheet(db, "회원정보", ["이름", "전화번호", "주소", "승인여부"])
 sheet_orders = get_or_create_worksheet(db, "주문내역", ["날짜", "배송지", "상품목록", "총금액", "주문유형"])
 
-# 카테고리별 상품 정리 함수
 def get_products_by_category(data):
     cats = {}
     for row in data:
@@ -38,7 +37,7 @@ def get_products_by_category(data):
         cats[cat].append(row)
     return cats
 
-# 상품 주문 UI 함수 (이미지 연동 포함)
+# 수량 입력 방식을 '직접 입력(text_input)'으로 변경하고 사이즈 축소
 def display_order_form(is_wholesale):
     data = sheet_products.get_all_records()
     cats = get_products_by_category(data)
@@ -53,14 +52,22 @@ def display_order_form(is_wholesale):
                 name, name_en, img_path = row['name'], row['name_en'], row.get('image_path', '')
                 price = int(row['price_wholesale']) if is_wholesale else int(row['price_retail'])
                 
-                col1, col2 = st.columns([1, 3])
-                with col1:
+                # 열을 나누어 배치 (이미지 1 : 정보 3)
+                col_img, col_info, col_qty = st.columns([1, 2, 1])
+                
+                with col_img:
                     if img_path: st.image(img_path, use_column_width=True)
-                    else: st.write("이미지 없음")
-                with col2:
-                    st.write(f"### {name} ({name_en})")
-                    st.write(f"**가격:** {price} THB")
-                    qty = st.number_input(f"{name} 수량", min_value=0, step=1, key=f"{'w_' if is_wholesale else 'r_'}{name}")
+                with col_info:
+                    st.write(f"### {name}")
+                    st.write(f"{name_en} / {price} THB")
+                with col_qty:
+                    # 사이즈 축소를 위해 별도 컬럼 안에 배치 후 텍스트 입력 사용
+                    qty_input = st.text_input(f"수량", value="0", key=f"{'w_' if is_wholesale else 'r_'}{name}")
+                    try:
+                        qty = int(qty_input)
+                    except:
+                        qty = 0
+                    
                     if qty > 0:
                         selected_items.append({"name": name, "qty": qty, "price": price})
                         total_price += price * qty
@@ -73,7 +80,7 @@ tab1, tab2, tab3, tab4 = st.tabs(["🏠 홈 딜리버리", "📦 도매 주문",
 # --- 1. 홈 딜리버리 ---
 with tab1:
     st.header("🏠 홈 딜리버리 서비스")
-    address = st.text_input("📍 배송지 주소를 입력하세요", key="addr_home_1")
+    address = st.text_input("📍 배송지 주소", key="addr_home_1")
     items, total = display_order_form(False)
     if total > 0:
         st.subheader(f"총 금액: {total:,} THB")
@@ -85,7 +92,6 @@ with tab1:
 with tab2:
     st.header("📦 도매 상품 발주")
     if 'logged_in' not in st.session_state:
-        st.info("도매 주문을 위해 로그인이 필요합니다.")
         with st.form("login_form"):
             login_name = st.text_input("식당 이름")
             login_phone = st.text_input("전화번호 뒷번호")
