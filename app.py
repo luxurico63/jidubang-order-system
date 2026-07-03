@@ -301,6 +301,10 @@ elif st.session_state.current_page == "user_page":
 elif st.session_state.current_page == "delivery_page":
     st.title("🛵 치앙마이 홈 딜리버리 (소매 주문)")
     
+    # [핵심 수정] 에러 해결을 위해 상품 루프 돌기 전에 변수를 먼저 정의(초기화)합니다.
+    subtotal_cost = 0 
+    selected_items = []
+    
     # --- [추가] 상시 배송비 안내 가이드 박스 ---
     st.markdown("""
         <div style="background-color: #f0f2f6; padding: 15px; border-radius: 8px; border-left: 5px solid #FF4B4B; margin-bottom: 20px;">
@@ -314,22 +318,39 @@ elif st.session_state.current_page == "delivery_page":
     address = st.text_input("📍 배송받으실 치앙마이 상세 주소를 입력하세요")
     
     if address:
-        db_products = get_products()
-        selected_items = []
-        subtotal_cost = 0  # 소매가 기준의 상품 순수 합계 금액
+        st.success(f"배송지: {address} 확인되었습니다.")
         
-        for p in db_products:
-            if p["image_path"] and os.path.exists(p["image_path"]):
-                st.image(p["image_path"], use_container_width=True)
-            st.markdown(f"### 🛍️ {p['name']} ({p['name_en']})")
-            st.markdown(f"#### 💰 판매 가격: **{p['price_delivery']:,} THB**")
-            checked = st.checkbox("선택", key=f"check_d_{p['id']}")
-            quantity = st.number_input("수량", min_value=1, value=1, key=f"qty_d_{p['id']}")
-            if checked:
-                selected_items.append({"name": p["name"], "price": p["price_delivery"], "qty": quantity})
-                subtotal_cost += p["price_delivery"] * quantity
-            st.divider()
+        # 예시 상품 데이터
+        products = [{"id": 1, "name": "김치", "price": 200}, {"id": 2, "name": "라면", "price": 100}]
+        
+        selected_items = []
+        subtotal = 0
+        
+        for p in products:
+            st.write(f"### {p['name']} ({p['price']} THB)")
             
+            # 컬럼으로 사이즈 조절
+            col1, col2 = st.columns([1, 1]) 
+            with col1:
+                qty = st.number_input(f"{p['name']} 수량", min_value=0, value=0, step=1, key=f"qty_{p['id']}")
+            
+            if qty > 0:
+                selected_items.append({"name": p['name'], "price": p['price'], "qty": qty})
+                subtotal += p['price'] * qty
+            st.divider()
+                
+        if subtotal > 0:
+            st.write(f"## 총 금액: {subtotal:,} THB")
+            if st.button("영수증 발행"):
+                st.session_state.receipt_data = create_receipt_image("HOME DELIVERY", address, selected_items, subtotal, 0, subtotal)
+                st.rerun() # 발행 후 즉시 갱신
+
+        if st.session_state.receipt_data and os.path.exists(st.session_state.receipt_data):
+            st.image(st.session_state.receipt_data, caption="영수증 이미지")
+    else:
+        st.info("👆 위 칸에 배송지 주소를 먼저 입력하시면 상품 목록이 나타납니다.")
+
+
         if subtotal_cost > 0:
             # --- 금액별 배송비 계산 로직 ---
             if subtotal_cost >= 1500:
