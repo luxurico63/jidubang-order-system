@@ -1,14 +1,19 @@
 import streamlit as st
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-import os
 
-# 구글 시트 연결 설정
+# [핵심 수정] Secrets를 사용하여 구글 시트 연결
 def get_sheet():
+    # Streamlit Cloud의 Secrets에 저장된 정보를 딕셔너리로 가져옴
+    creds_dict = st.secrets["gcp"]
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name("service_account.json", scope)
+    
+    # 딕셔너리 형태로 인증 (파일을 열지 않음!)
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     client = gspread.authorize(creds)
-    return client.open("jidubang_db").sheet1  # 시트 이름이 jidubang_db인 파일의 첫 번째 시트
+    
+    # 여기서 "jidubang_db"는 네가 만든 구글 시트 파일 이름
+    return client.open("jidubang_db").sheet1 
 
 sheet = get_sheet()
 
@@ -16,15 +21,14 @@ st.set_page_config(page_title="지두방 발주 시스템", layout="centered")
 
 st.title("📦 지두방 구글 시트 연동 시스템")
 
-# 1. 데이터 불러오기 (상품 목록)
+# 데이터 불러오기
 data = sheet.get_all_records()
-# 데이터 예시: [{"name": "김치", "price_delivery": 200}, ...]
 
-# 2. 주문 페이지 구현
+# 주문 페이지 구현
 address = st.text_input("배송지 주소")
 
 selected_items = []
-subtotal_cost = 0 # 에러 방지를 위해 초기화
+subtotal_cost = 0
 
 for row in data:
     name = row['name']
@@ -43,5 +47,4 @@ for row in data:
 if subtotal_cost > 0:
     st.write(f"## 총 금액: {subtotal_cost:,} THB")
     if st.button("주문 확정하기"):
-        # 여기서 주문 내역을 구글 시트의 다른 시트에 저장하거나 메일로 발송 가능
         st.success(f"{address}로 {subtotal_cost} THB 주문 완료!")
