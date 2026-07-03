@@ -51,7 +51,31 @@ if address:
     
     if subtotal_cost > 0:
         st.write(f"## 총 금액: {subtotal_cost:,} THB")
-        if st.button("주문 확정하기"):
-            st.success(f"{address}로 {subtotal_cost} THB 주문 완료!")
+        # 기존의 '주문 확정하기' 버튼 로직 부분을 아래 코드로 교체하세요
+if st.button("주문 확정하기"):
+    # 1. '주문내역' 시트를 불러오거나 생성
+    # (구글 시트 파일에 '주문내역'이라는 이름의 탭을 미리 하나 만들어두세요!)
+    try:
+        order_sheet = get_sheet().spreadsheet.worksheet("주문내역")
+    except:
+        order_sheet = get_sheet().spreadsheet.add_worksheet(title="주문내역", rows="100", cols="5")
+        order_sheet.append_row(["날짜", "주소", "상품명", "수량", "총금액"])
+
+    # 2. 주문 정보 저장 (현재 시간, 주소, 상품 리스트)
+    import datetime
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    for item in selected_items:
+        order_sheet.append_row([
+            now, 
+            address, 
+            item['name'], 
+            item['qty'], 
+            item['qty'] * item['price']
+        ])
+    
+    st.success(f"🎉 주문이 성공적으로 접수되었습니다!")
+    st.balloons() # 축하 풍선 효과
+    
 else:
     st.info("👆 주소를 입력하면 상품 목록이 나타납니다.")
