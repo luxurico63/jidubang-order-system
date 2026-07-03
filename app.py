@@ -37,7 +37,7 @@ def get_products_by_category(data):
         cats[cat].append(row)
     return cats
 
-# 수량 입력 방식을 '빈칸'으로 변경
+# 홈 딜리버리와 도매 주문 모두에서 이미지와 수량 입력이 가능하도록 수정된 함수
 def display_order_form(is_wholesale):
     data = sheet_products.get_all_records()
     cats = get_products_by_category(data)
@@ -55,11 +55,11 @@ def display_order_form(is_wholesale):
                 col_img, col_info, col_qty = st.columns([1, 2, 1])
                 with col_img:
                     if img_path: st.image(img_path, use_column_width=True)
+                    else: st.write("이미지 없음")
                 with col_info:
                     st.write(f"### {name}")
                     st.write(f"{name_en} / {price} THB")
                 with col_qty:
-                    # 기본값 없는 빈칸 입력창
                     qty_input = st.text_input(f"수량", value="", key=f"{'w_' if is_wholesale else 'r_'}{name}")
                     try:
                         qty = int(qty_input) if qty_input else 0
@@ -75,7 +75,7 @@ def display_order_form(is_wholesale):
 st.image("https://via.placeholder.com/1200x200?text=Jidubang+Order+System", use_column_width=True)
 tab1, tab2, tab3, tab4 = st.tabs(["🏠 홈 딜리버리", "📦 도매 주문", "📝 회원가입", "⚙️ 관리자"])
 
-# --- 1. 홈 딜리버리 (주소 입력 전 상품 비공개) ---
+# --- 1. 홈 딜리버리 ---
 with tab1:
     st.header("🏠 홈 딜리버리 서비스")
     address = st.text_input("📍 배송지 주소를 먼저 입력하세요", key="addr_home_1")
