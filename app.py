@@ -103,8 +103,9 @@ with tab1:
                 st.session_state['receipt_bytes'] = create_receipt_image("홈 딜리버리", items, final_total)
                 st.rerun()
     if st.session_state['receipt_bytes']:
-        st.success("🎉 주문 완료! 아래 이미지를 길게 눌러 공유하세요.")
+        st.success("🎉 주문 완료!")
         st.image(st.session_state['receipt_bytes'])
+        st.download_button("📥 이미지 저장 및 공유하기", data=st.session_state['receipt_bytes'], file_name="주문영수증.jpg", mime="image/jpeg")
 
 with tab2:
     st.header("📦 도매 주문")
@@ -127,19 +128,7 @@ with tab2:
                 st.session_state['receipt_bytes'] = create_receipt_image(st.session_state['user'], items, total)
                 st.rerun()
         if st.session_state['receipt_bytes']:
-            st.success("🎉 주문 완료! 이미지를 길게 눌러 공유하세요.")
-            st.image(st.session_state['receipt_bytes'])
-
-with tab3:
-    st.header("📝 회원가입")
-    rest_name = st.text_input("식당 이름"); phone = st.text_input("전화번호 뒷번호"); addr = st.text_input("주소")
-    if st.button("가입 신청"):
-        sheet_users.append_row([rest_name, phone, addr, "대기"]); st.success("신청 완료!")
-
-with tab4:
-    st.header("⚙️ 관리자")
-    if st.text_input("비밀번호", type="password") == "4419":
-        for i, row in enumerate(sheet_users.get_all_values()[1:], start=2):
-            if st.button(f"{row[0]} 승인", key=f"app_{i}"): sheet_users.update_cell(i, 4, "승인"); st.rerun()
+            st.success("🎉 주문 완료!")
+            st.image(
 
             
