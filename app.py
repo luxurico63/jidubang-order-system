@@ -23,23 +23,27 @@ sheet_products = db.sheet1
 sheet_users = db.worksheet("회원정보")
 sheet_orders = db.worksheet("주문내역")
 
-# 영수증 생성 함수
+# 영수증 생성 함수 (날짜 추가)
 def create_receipt_image(restaurant_name, items, total_amount):
-    width, height = 500, 350 + (len(items) * 80)
+    width, height = 500, 400 + (len(items) * 80)
     image = Image.new('RGB', (width, height), 'white')
     draw = ImageDraw.Draw(image)
     font_path = os.path.join(os.path.dirname(__file__), "NanumGothic.ttf")
     
     try:
         font_title = ImageFont.truetype(font_path, 40)
+        font_date = ImageFont.truetype(font_path, 20) # 날짜용 폰트
         font_item = ImageFont.truetype(font_path, 25)
         font_total = ImageFont.truetype(font_path, 45)
         font_thanks = ImageFont.truetype(font_path, 20)
     except:
-        font_title = font_item = font_total = font_thanks = ImageFont.load_default()
+        font_title = font_date = font_item = font_total = font_thanks = ImageFont.load_default()
 
+    # 제목 및 날짜
     draw.text((50, 50), restaurant_name, fill="black", font=font_title)
-    y = 150
+    draw.text((50, 100), f"날짜: {get_current_time()}", fill="gray", font=font_date)
+    
+    y = 180
     for item in items:
         draw.text((50, y), f"{item['name']} x {item['qty']}", fill="black", font=font_item)
         draw.text((50, y + 30), f"({item['name_en']})", fill="gray", font=font_item)
