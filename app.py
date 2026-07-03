@@ -2,8 +2,11 @@ import streamlit as st
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import datetime
+import os
+from PIL import Image, ImageDraw, ImageFont
+import io
 
-# 1. 모바일 최적화 설정
+# 1. 설정
 st.set_page_config(page_title="지두방 발주 시스템", layout="centered")
 
 def get_sheet():
@@ -16,37 +19,48 @@ def get_sheet():
     return client.open("jidubang_db")
 
 db = get_sheet()
-
-def get_or_create_worksheet(db, title, headers):
-    try:
-        return db.worksheet(title)
-    except:
-        ws = db.add_worksheet(title=title, rows="100", cols=len(headers))
-        ws.append_row(headers)
-        return ws
-
 sheet_products = db.sheet1
-sheet_users = get_or_create_worksheet(db, "회원정보", ["이름", "전화번호", "주소", "승인여부"])
-sheet_orders = get_or_create_worksheet(db, "주문내역", ["날짜", "배송지", "상품목록", "총금액", "주문유형"])
+sheet_users = db.worksheet("회원정보")
+sheet_orders = db.worksheet("주문내역")
 
-def get_products_by_category(data):
+# 영수증 생성 함수
+def create_receipt_image(restaurant_name, items, total_amount):
+    width, height = 500, 300 + (len(items) * 80)
+    image = Image.new('RGB', (width, height), 'white')
+    draw = ImageDraw.Draw(image)
+    font_path = os.path.join(os.path.dirname(__file__), "NanumGothic.ttf")
+    
+    try:
+        font_title = ImageFont.truetype(font_path, 40)
+        font_item = ImageFont.truetype(font_path, 25)
+        font_total = ImageFont.truetype(font_path, 50)
+    except:
+        font_title = font_item = font_total = ImageFont.load_default()
+
+    draw.text((50, 50), restaurant_name, fill="black", font=font_title)
+    y = 150
+    for item in items:
+        draw.text((50, y), f"{item['name']} x {item['qty']}", fill="black", font=font_item)
+        draw.text((50, y + 30), f"({item['name_en']})", fill="gray", font=font_item)
+        y += 80
+    draw.text((50, y + 20), f"총 금액: {total_amount:,} THB", fill="red", font=font_total)
+    
+    buf = io.BytesIO()
+    image.save(buf, format='PNG')
+    return buf.getvalue()
+
+def get_current_time():
+    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+
+def display_order_form(is_wholesale):
+    data = sheet_products.get_all_records()
     cats = {}
     for row in data:
         cat = row.get('category', '기타')
         if cat not in cats: cats[cat] = []
         cats[cat].append(row)
-    return cats
-
-def get_current_time():
-    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-
-# 상품 UI 함수
-def display_order_form(is_wholesale):
-    data = sheet_products.get_all_records()
-    cats = get_products_by_category(data)
-    # 탭 이름을 그대로 유지
-    cat_tabs = st.tabs(list(cats.keys()))
     
+    cat_tabs = st.tabs(list(cats.keys()))
     total_price = 0
     selected_items = []
     
@@ -55,57 +69,48 @@ def display_order_form(is_wholesale):
             for row in cats[cat]:
                 name, name_en, img_path = row['name'], row['name_en'], row.get('image_path', '')
                 price = int(row['price_wholesale']) if is_wholesale else int(row['price_retail'])
-                
                 if img_path: st.image(img_path, use_column_width=True)
                 st.write(f"### {name}")
                 st.write(f"{name_en} / {price} THB")
-                
                 qty_input = st.text_input(f"{name} 수량", value="", key=f"{'w_' if is_wholesale else 'r_'}{name}")
-                try:
-                    qty = int(qty_input) if qty_input else 0
-                except:
-                    qty = 0
-                
+                qty = int(qty_input) if qty_input and qty_input.isdigit() else 0
                 if qty > 0:
-                    selected_items.append({"name": name, "qty": qty, "price": price})
+                    selected_items.append({"name": name, "name_en": name_en, "qty": qty, "price": price})
                     total_price += price * qty
                 st.divider()
     return selected_items, total_price
 
-# 2. 메인 UI (탭 이름을 원래대로 복구)
+# 2. 메인 UI
 st.image("https://via.placeholder.com/1200x200?text=Jidubang+Order+System", use_column_width=True)
 tab1, tab2, tab3, tab4 = st.tabs(["🏠 홈 딜리버리", "📦 도매 주문", "📝 회원가입", "⚙️ 관리자"])
 
 with tab1:
     st.header("🏠 홈 딜리버리 서비스")
-    address = st.text_input("📍 배송지 주소", key="addr_home_1")
+    address = st.text_input("📍 배송지 주소를 먼저 입력하세요", key="addr_home_1")
     st.caption("정확한 주소를 기입해주셔야 빠른 배달이 가능합니다.")
     st.info("🚚 800THB미만 +100THB, 800~1500THB미만 +50THB, 1500THB 이상 무료")
-    
     if address:
         items, total = display_order_form(False)
         if total > 0:
             delivery_fee = 100 if total < 800 else (50 if total < 1500 else 0)
-            st.markdown(f"**총 결제 금액: {total + delivery_fee:,} THB**")
-            if st.button("주문 확정", key="btn_home"):
-                sheet_orders.append_row([get_current_time(), address, ", ".join([f"{i['name']} {i['qty']}개" for i in items]), total + delivery_fee, "홈딜리버리"])
-                st.success("완료!")
-    else:
-        st.info("주소를 입력하면 상품 목록이 나타납니다.")
+            final_total = total + delivery_fee
+            st.markdown(f"**총 결제 금액: {final_total:,} THB**")
+            if st.button("홈 딜리버리 주문 확정", key="btn_home"):
+                sheet_orders.append_row([get_current_time(), address, ", ".join([f"{i['name']} {i['qty']}개" for i in items]), final_total, "홈딜리버리"])
+                st.success("🎉 주문 완료!")
 
 with tab2:
     st.header("📦 도매 주문")
     if 'logged_in' not in st.session_state:
         with st.form("login_form"):
-            login_name = st.text_input("식당 이름")
-            login_phone = st.text_input("전화번호 뒷번호")
+            login_name = st.text_input("식당 이름"); login_phone = st.text_input("전화번호 뒷번호")
             if st.form_submit_button("로그인"):
                 all_users = sheet_users.get_all_values()[1:]
                 user_info = next((u for u in all_users if u[0].strip() == login_name.strip() and u[1].strip() == login_phone.strip()), None)
-                if user_info and len(user_info) >= 4 and user_info[3] == "승인":
+                if user_info and user_info[3] == "승인":
                     st.session_state['logged_in'] = True; st.session_state['user'] = login_name
                     st.session_state['address'] = user_info[2]; st.rerun()
-                else: st.error("승인 대기 중이거나 정보가 일치하지 않습니다.")
+                else: st.error("승인 대기 중이거나 정보가 불일치합니다.")
     else:
         st.write(f"환영합니다, **{st.session_state['user']}**님!")
         items, total = display_order_form(True)
@@ -113,18 +118,19 @@ with tab2:
             st.markdown(f"**총 금액: {total:,} THB**")
             if st.button("도매 주문 확정", key="btn_wholesale"):
                 sheet_orders.append_row([get_current_time(), st.session_state['user'], ", ".join([f"{i['name']} {i['qty']}개" for i in items]), total, "도매"])
-                st.success("완료!")
+                st.success("🎉 주문 완료!")
+                receipt_img = create_receipt_image(st.session_state['user'], items, total)
+                st.download_button("📥 영수증 다운로드/공유", data=receipt_img, file_name="receipt.png", mime="image/png")
 
 with tab3:
-    st.header("📝 식당 회원가입")
+    st.header("📝 회원가입")
     rest_name = st.text_input("식당 이름"); phone = st.text_input("전화번호 뒷번호"); addr = st.text_input("주소")
     if st.button("가입 신청"):
         sheet_users.append_row([rest_name, phone, addr, "대기"]); st.success("신청 완료!")
 
 with tab4:
-    st.header("⚙️ 관리자 승인")
-    admin_pw = st.text_input("관리자 비밀번호", type="password")
-    if admin_pw == "4419":
+    st.header("⚙️ 관리자")
+    if st.text_input("비밀번호", type="password") == "4419":
         for i, row in enumerate(sheet_users.get_all_values()[1:], start=2):
             if st.button(f"{row[0]} 승인", key=f"app_{i}"): sheet_users.update_cell(i, 4, "승인"); st.rerun()
 
