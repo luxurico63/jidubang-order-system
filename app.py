@@ -58,7 +58,7 @@ def create_receipt_image(restaurant_name, items, total_amount):
 def get_current_time():
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 
-# 3. 주문 폼 함수 (숫자 키패드 강제 입력 방식)
+# 3. 주문 폼 함수
 def display_order_form(is_wholesale):
     data = sheet_products.get_all_records()
     cats = {}
@@ -79,18 +79,8 @@ def display_order_form(is_wholesale):
                 if img_path: st.image(img_path, use_column_width=True)
                 st.write(f"### {name}")
                 st.write(f"{name_en} / {price} THB")
-                
-                # HTML을 사용하여 숫자 키패드 호출 및 숫자만 입력 가능하도록 설정
-                qty_input = st.text_input(
-                    f"{name} 수량", 
-                    value="", 
-                    key=f"{'w_' if is_wholesale else 'r_'}{name}",
-                    help="숫자만 입력하세요"
-                )
-                
-                # 숫자만 처리
+                qty_input = st.text_input(f"{name} 수량", value="", key=f"{'w_' if is_wholesale else 'r_'}{name}")
                 qty = int(qty_input) if qty_input and qty_input.isdigit() else 0
-                
                 if qty > 0:
                     selected_items.append({"name": name, "name_en": name_en, "qty": qty, "price": price})
                     total_price += price * qty
@@ -156,9 +146,21 @@ with tab3:
         sheet_users.append_row([rest_name, phone, addr, "대기"]); st.success("신청 완료!")
 
 with tab4:
-    st.header("⚙️ 관리자")
+    st.header("⚙️ 관리자 승인")
     if st.text_input("비밀번호", type="password") == "4419":
-        for i, row in enumerate(sheet_users.get_all_values()[1:], start=2):
-            if st.button(f"{row[0]} 승인", key=f"app_{i}"): sheet_users.update_cell(i, 4, "승인"); st.rerun()
+        col_left, col_right = st.columns(2)
+        users_data = sheet_users.get_all_values()[1:]
+        
+        with col_left:
+            st.subheader("대기 중")
+            for i, row in enumerate(users_data, start=2):
+                if row[3] == "대기":
+                    if st.button(f"승인: {row[0]}", key=f"app_{i}"): 
+                        sheet_users.update_cell(i, 4, "승인"); st.rerun()
+        
+        with col_right:
+            st.subheader("승인 완료")
+            for row in users_data:
+                if row[3] == "승인":
+                    st.write(f"✅ {row[0]}")
 
-            
