@@ -23,9 +23,10 @@ sheet_products = db.sheet1
 sheet_users = db.worksheet("회원정보")
 sheet_orders = db.worksheet("주문내역")
 
-# 영수증 생성 함수 (감사 문구 포함)
+# 영수증 생성 함수 (JPG 형식으로 변경)
 def create_receipt_image(restaurant_name, items, total_amount):
     width, height = 500, 350 + (len(items) * 80)
+    # RGB 모드로 생성 (JPEG는 투명도인 RGBA를 지원하지 않음)
     image = Image.new('RGB', (width, height), 'white')
     draw = ImageDraw.Draw(image)
     font_path = os.path.join(os.path.dirname(__file__), "NanumGothic.ttf")
@@ -45,12 +46,12 @@ def create_receipt_image(restaurant_name, items, total_amount):
         draw.text((50, y + 30), f"({item['name_en']})", fill="gray", font=font_item)
         y += 80
     
-    # 감사 문구 및 총 금액
     draw.text((50, y + 20), "항상 이용해 주셔서 감사합니다.", fill="blue", font=font_thanks)
     draw.text((50, y + 50), f"총 금액: {total_amount:,} THB", fill="red", font=font_total)
     
     buf = io.BytesIO()
-    image.save(buf, format='PNG')
+    # JPEG 형식으로 저장 (품질 95%)
+    image.save(buf, format='JPEG', quality=95)
     return buf.getvalue()
 
 def get_current_time():
@@ -88,7 +89,6 @@ def display_order_form(is_wholesale):
 st.image("https://via.placeholder.com/1200x200?text=Jidubang+Order+System", use_column_width=True)
 tab1, tab2, tab3, tab4 = st.tabs(["🏠 홈 딜리버리", "📦 도매 주문", "📝 회원가입", "⚙️ 관리자"])
 
-# 주문 후 이미지 표시를 위한 세션 상태
 if 'receipt_bytes' not in st.session_state: st.session_state['receipt_bytes'] = None
 
 with tab1:
@@ -105,7 +105,7 @@ with tab1:
                 st.session_state['receipt_bytes'] = create_receipt_image("홈 딜리버리", items, final_total)
                 st.rerun()
     if st.session_state['receipt_bytes']:
-        st.success("🎉 주문 완료! 아래 이미지를 길게 눌러 저장/공유하세요.")
+        st.success("🎉 주문 완료! 이미지를 길게 눌러 저장/공유하세요.")
         st.image(st.session_state['receipt_bytes'])
 
 with tab2:
@@ -134,7 +134,6 @@ with tab2:
 
 with tab3:
     st.header("📝 회원가입")
-    # ... (기존과 동일)
     rest_name = st.text_input("식당 이름"); phone = st.text_input("전화번호 뒷번호"); addr = st.text_input("주소")
     if st.button("가입 신청"):
         sheet_users.append_row([rest_name, phone, addr, "대기"]); st.success("신청 완료!")
