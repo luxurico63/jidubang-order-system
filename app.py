@@ -37,7 +37,6 @@ def get_products_by_category(data):
         cats[cat].append(row)
     return cats
 
-# 시간 포맷을 년/월/일 시:분으로 수정하여 주문 내역 저장
 def get_current_time():
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 
@@ -82,12 +81,23 @@ tab1, tab2, tab3, tab4 = st.tabs(["🏠 홈 딜리버리", "📦 도매 주문",
 with tab1:
     st.header("🏠 홈 딜리버리 서비스")
     address = st.text_input("📍 배송지 주소를 먼저 입력하세요", key="addr_home_1")
+    st.caption("정확한 주소를 기입해주셔야 빠른 배달이 가능합니다.")
+    st.info("🚚 홈 딜리버리 서비스는 800THB미만은 +100THB, 800THB이상 1500THB미만은 +50THB, 1500THB 이상은 무료입니다.")
+    
     if address:
         items, total = display_order_form(False)
         if total > 0:
-            st.subheader(f"총 금액: {total:,} THB")
+            # 배달비 계산 로직
+            delivery_fee = 100 if total < 800 else (50 if total < 1500 else 0)
+            final_total = total + delivery_fee
+            
+            st.markdown(f"---")
+            st.write(f"### 상품 금액: {total:,} THB")
+            st.write(f"### 배달비: {delivery_fee:,} THB")
+            st.markdown(f"<h1 style='color:red;'>총 결제 금액: {final_total:,} THB</h1>", unsafe_allow_html=True)
+            
             if st.button("홈 딜리버리 주문 확정", key="btn_home"):
-                sheet_orders.append_row([get_current_time(), address, ", ".join([f"{i['name']} {i['qty']}개" for i in items]), total, "홈딜리버리"])
+                sheet_orders.append_row([get_current_time(), address, ", ".join([f"{i['name']} {i['qty']}개" for i in items]), final_total, "홈딜리버리"])
                 st.success("🎉 주문 완료!")
     else:
         st.info("상품을 보려면 배송지 주소를 입력해 주세요.")
