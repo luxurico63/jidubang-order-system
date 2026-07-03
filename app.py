@@ -17,6 +17,8 @@ st.title("📦 지두방 구글 시트 연동 시스템")
 
 # 데이터 불러오기 (캐싱을 사용하여 매번 시트를 열지 않게 최적화)
 @st.cache_data(ttl=60)
+# [수정] ttl=0으로 설정해서, 새로고침할 때마다 구글 시트를 다시 읽게 함
+@st.cache_data(ttl=0) 
 def load_data():
     sheet = get_sheet()
     return sheet.get_all_records()
