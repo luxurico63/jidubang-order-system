@@ -67,34 +67,36 @@ with tab2:
         login_name = st.text_input("식당 이름", key="login_name")
         login_phone = st.text_input("전화번호 뒷번호", key="login_phone")
         if st.button("로그인", key="btn_login"):
-            # get_all_values()로 데이터를 가져와서 헤더 이름에 의존하지 않음
-            all_users = sheet_users.get_all_values()[1:] # 1행 헤더 제외
-            
-            # [이름, 번호, 주소] 순서로 비교
+            all_users = sheet_users.get_all_values()[1:]
             user_info = next((u for u in all_users if u[0].strip() == login_name.strip() and u[1].strip() == login_phone.strip()), None)
-            
             if user_info:
                 st.session_state['logged_in'] = True
                 st.session_state['user'] = login_name
-                st.session_state['address'] = user_info[2] # 주소는 3번째(인덱스 2) 컬럼
+                st.session_state['address'] = user_info[2]
                 st.rerun()
             else:
-                st.error("가입된 정보가 없습니다. 식당 이름과 전화번호 뒷번호를 다시 확인해 주세요.")
+                st.error("가입된 정보가 없습니다.")
     else:
         st.success(f"환영합니다, **{st.session_state['user']}**님!")
         if st.button("로그아웃", key="btn_logout"):
             del st.session_state['logged_in']
             st.rerun()
             
+        # 로그인 후에만 나타나는 상품 목록과 도매가격
+        st.subheader("발주 가능한 상품 목록")
         data = sheet_products.get_all_records()
         address = st.text_input("📍 배송지 주소", value=st.session_state.get('address', ''), key="addr_wholesale_1")
         
         total_price = 0
         selected_items = []
         for row in data:
+            # 도매 가격(price_wholesale)을 불러옴
             name, name_en, price = row['name'], row['name_en'], int(row['price_wholesale'])
-            st.write(f"### {name} ({name_en}) - {price} THB")
-            qty = st.number_input(f"{name} 도매 수량", min_value=0, step=1, key=f"wholesale_{name}")
+            st.write(f"---")
+            st.write(f"**상품명:** {name} ({name_en})")
+            st.write(f"**도매가:** {price} THB")
+            qty = st.number_input(f"{name} 수량", min_value=0, step=1, key=f"wholesale_{name}")
+            
             if qty > 0:
                 selected_items.append({"name": name, "qty": qty, "price": price})
                 total_price += price * qty
