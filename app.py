@@ -40,10 +40,11 @@ def get_products_by_category(data):
 def get_current_time():
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 
-# 모바일 대응: 상품을 세로로 쌓아서 보여주는 UI
+# 상품 UI 함수
 def display_order_form(is_wholesale):
     data = sheet_products.get_all_records()
     cats = get_products_by_category(data)
+    # 탭 이름을 그대로 유지
     cat_tabs = st.tabs(list(cats.keys()))
     
     total_price = 0
@@ -55,7 +56,6 @@ def display_order_form(is_wholesale):
                 name, name_en, img_path = row['name'], row['name_en'], row.get('image_path', '')
                 price = int(row['price_wholesale']) if is_wholesale else int(row['price_retail'])
                 
-                # 모바일에서는 세로로 쌓이도록 컬럼 분할 제거 또는 조정
                 if img_path: st.image(img_path, use_column_width=True)
                 st.write(f"### {name}")
                 st.write(f"{name_en} / {price} THB")
@@ -69,26 +69,29 @@ def display_order_form(is_wholesale):
                 if qty > 0:
                     selected_items.append({"name": name, "qty": qty, "price": price})
                     total_price += price * qty
-                st.divider() # 상품 간 구분선 추가
+                st.divider()
     return selected_items, total_price
 
-# 2. 배너 및 탭
+# 2. 메인 UI (탭 이름을 원래대로 복구)
 st.image("https://via.placeholder.com/1200x200?text=Jidubang+Order+System", use_column_width=True)
-tab1, tab2, tab3, tab4 = st.tabs(["🏠 홈", "📦 도매", "📝 가입", "⚙️ 관리"])
+tab1, tab2, tab3, tab4 = st.tabs(["🏠 홈 딜리버리", "📦 도매 주문", "📝 회원가입", "⚙️ 관리자"])
 
 with tab1:
-    st.header("🏠 홈 딜리버리")
+    st.header("🏠 홈 딜리버리 서비스")
     address = st.text_input("📍 배송지 주소", key="addr_home_1")
+    st.caption("정확한 주소를 기입해주셔야 빠른 배달이 가능합니다.")
+    st.info("🚚 800THB미만 +100THB, 800~1500THB미만 +50THB, 1500THB 이상 무료")
+    
     if address:
         items, total = display_order_form(False)
         if total > 0:
             delivery_fee = 100 if total < 800 else (50 if total < 1500 else 0)
-            st.markdown(f"**총 결제: {total + delivery_fee:,} THB**")
+            st.markdown(f"**총 결제 금액: {total + delivery_fee:,} THB**")
             if st.button("주문 확정", key="btn_home"):
                 sheet_orders.append_row([get_current_time(), address, ", ".join([f"{i['name']} {i['qty']}개" for i in items]), total + delivery_fee, "홈딜리버리"])
                 st.success("완료!")
     else:
-        st.info("주소를 입력하면 상품이 나타납니다.")
+        st.info("주소를 입력하면 상품 목록이 나타납니다.")
 
 with tab2:
     st.header("📦 도매 주문")
@@ -107,20 +110,20 @@ with tab2:
         st.write(f"환영합니다, **{st.session_state['user']}**님!")
         items, total = display_order_form(True)
         if total > 0:
-            st.markdown(f"**총 결제: {total:,} THB**")
-            if st.button("주문 확정", key="btn_wholesale"):
+            st.markdown(f"**총 금액: {total:,} THB**")
+            if st.button("도매 주문 확정", key="btn_wholesale"):
                 sheet_orders.append_row([get_current_time(), st.session_state['user'], ", ".join([f"{i['name']} {i['qty']}개" for i in items]), total, "도매"])
                 st.success("완료!")
 
 with tab3:
-    st.header("📝 가입 신청")
+    st.header("📝 식당 회원가입")
     rest_name = st.text_input("식당 이름"); phone = st.text_input("전화번호 뒷번호"); addr = st.text_input("주소")
     if st.button("가입 신청"):
         sheet_users.append_row([rest_name, phone, addr, "대기"]); st.success("신청 완료!")
 
 with tab4:
-    st.header("⚙️ 관리자")
-    admin_pw = st.text_input("비밀번호", type="password")
+    st.header("⚙️ 관리자 승인")
+    admin_pw = st.text_input("관리자 비밀번호", type="password")
     if admin_pw == "4419":
         for i, row in enumerate(sheet_users.get_all_values()[1:], start=2):
             if st.button(f"{row[0]} 승인", key=f"app_{i}"): sheet_users.update_cell(i, 4, "승인"); st.rerun()
