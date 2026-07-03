@@ -37,7 +37,7 @@ def get_products_by_category(data):
         cats[cat].append(row)
     return cats
 
-# 수량 입력 방식을 '직접 입력(text_input)'으로 변경하고 사이즈 축소
+# 수량 입력 방식을 '빈칸'으로 변경
 def display_order_form(is_wholesale):
     data = sheet_products.get_all_records()
     cats = get_products_by_category(data)
@@ -52,19 +52,17 @@ def display_order_form(is_wholesale):
                 name, name_en, img_path = row['name'], row['name_en'], row.get('image_path', '')
                 price = int(row['price_wholesale']) if is_wholesale else int(row['price_retail'])
                 
-                # 열을 나누어 배치 (이미지 1 : 정보 3)
                 col_img, col_info, col_qty = st.columns([1, 2, 1])
-                
                 with col_img:
                     if img_path: st.image(img_path, use_column_width=True)
                 with col_info:
                     st.write(f"### {name}")
                     st.write(f"{name_en} / {price} THB")
                 with col_qty:
-                    # 사이즈 축소를 위해 별도 컬럼 안에 배치 후 텍스트 입력 사용
-                    qty_input = st.text_input(f"수량", value="0", key=f"{'w_' if is_wholesale else 'r_'}{name}")
+                    # 기본값 없는 빈칸 입력창
+                    qty_input = st.text_input(f"수량", value="", key=f"{'w_' if is_wholesale else 'r_'}{name}")
                     try:
-                        qty = int(qty_input)
+                        qty = int(qty_input) if qty_input else 0
                     except:
                         qty = 0
                     
@@ -77,16 +75,19 @@ def display_order_form(is_wholesale):
 st.image("https://via.placeholder.com/1200x200?text=Jidubang+Order+System", use_column_width=True)
 tab1, tab2, tab3, tab4 = st.tabs(["🏠 홈 딜리버리", "📦 도매 주문", "📝 회원가입", "⚙️ 관리자"])
 
-# --- 1. 홈 딜리버리 ---
+# --- 1. 홈 딜리버리 (주소 입력 전 상품 비공개) ---
 with tab1:
     st.header("🏠 홈 딜리버리 서비스")
-    address = st.text_input("📍 배송지 주소", key="addr_home_1")
-    items, total = display_order_form(False)
-    if total > 0:
-        st.subheader(f"총 금액: {total:,} THB")
-        if st.button("홈 딜리버리 주문 확정", key="btn_home"):
-            sheet_orders.append_row([datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), address, ", ".join([f"{i['name']} {i['qty']}개" for i in items]), total, "홈딜리버리"])
-            st.success("🎉 주문 완료!")
+    address = st.text_input("📍 배송지 주소를 먼저 입력하세요", key="addr_home_1")
+    if address:
+        items, total = display_order_form(False)
+        if total > 0:
+            st.subheader(f"총 금액: {total:,} THB")
+            if st.button("홈 딜리버리 주문 확정", key="btn_home"):
+                sheet_orders.append_row([datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), address, ", ".join([f"{i['name']} {i['qty']}개" for i in items]), total, "홈딜리버리"])
+                st.success("🎉 주문 완료!")
+    else:
+        st.info("상품을 보려면 배송지 주소를 입력해 주세요.")
 
 # --- 2. 도매 주문 ---
 with tab2:
@@ -139,3 +140,4 @@ with tab4:
             if col3.button(f"승인하기", key=f"approve_{i}"):
                 sheet_users.update_cell(i, 4, "승인"); st.rerun()
             col4.write(row[3] if len(row) > 3 else "대기")
+
