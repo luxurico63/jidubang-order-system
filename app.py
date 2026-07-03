@@ -71,7 +71,7 @@ with tab2:
             user_info = next((u for u in all_users if u[0].strip() == login_name.strip() and u[1].strip() == login_phone.strip()), None)
             
             if user_info:
-                if user_info[3] == "승인":  # 승인 여부 체크
+                if user_info[3] == "승인":
                     st.session_state['logged_in'] = True
                     st.session_state['user'] = login_name
                     st.session_state['address'] = user_info[2]
@@ -85,9 +85,10 @@ with tab2:
         if st.button("로그아웃", key="btn_logout"):
             del st.session_state['logged_in']
             st.rerun()
-        # ... (상품 목록 및 주문 로직은 동일) ...
+            
         data = sheet_products.get_all_records()
         address = st.text_input("📍 배송지 주소", value=st.session_state.get('address', ''), key="addr_wholesale_1")
+        
         total_price = 0
         selected_items = []
         for row in data:
@@ -97,6 +98,7 @@ with tab2:
             if qty > 0:
                 selected_items.append({"name": name, "qty": qty, "price": price})
                 total_price += price * qty
+        
         if total_price > 0:
             st.markdown(f"<h1 style='color:red;'>총 금액: {total_price:,} THB</h1>", unsafe_allow_html=True)
             if st.button("도매 주문 확정", key="btn_wholesale"):
@@ -112,14 +114,14 @@ with tab3:
     phone = st.text_input("전화번호 뒷번호", key="signup_phone")
     addr = st.text_input("주소", key="signup_addr")
     if st.button("가입 신청하기", key="btn_signup"):
-        sheet_users.append_row([rest_name, phone, addr, "대기"]) # '대기' 상태로 저장
+        sheet_users.append_row([rest_name, phone, addr, "대기"])
         st.success("가입 신청 완료! 관리자 승인 후 로그인 가능합니다.")
 
-# --- 4. 관리자 탭 (승인 전용) ---
+# --- 4. 관리자 탭 ---
 with tab4:
     st.header("⚙️ 관리자 승인")
-    admin_pw = st.text_input("관리자 비밀번호", type="password")
-    if admin_pw == "1234": # 실제로는 환경변수로 보호하는 게 좋음
+    admin_pw = st.text_input("관리자 비밀번호", type="password", key="admin_pw")
+    if admin_pw == "4419":
         users_data = sheet_users.get_all_values()
         for i, row in enumerate(users_data[1:], start=2):
             col1, col2, col3, col4 = st.columns(4)
