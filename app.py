@@ -64,8 +64,8 @@ with tab2:
     st.header("📦 도매 상품 발주")
     if 'logged_in' not in st.session_state:
         st.info("도매 주문을 위해 로그인이 필요합니다.")
-        login_name = st.text_input("식당 이름 (로그인)")
-        login_phone = st.text_input("전화번호 뒷번호 (로그인)")
+        login_name = st.text_input("식당 이름")
+        login_phone = st.text_input("전화번호 뒤 4자리")
         if st.button("로그인"):
             users = sheet_users.get_all_records()
             # 식당 이름과 전화번호로 회원 확인
