@@ -23,7 +23,7 @@ sheet_products = db.sheet1
 sheet_users = db.worksheet("회원정보")
 sheet_orders = db.worksheet("주문내역")
 
-# 2. 영수증 생성 함수 (YY/MM/DD 형식)
+# 2. 영수증 생성 함수
 def create_receipt_image(restaurant_name, items, total_amount):
     width, height = 500, 400 + (len(items) * 80)
     image = Image.new('RGB', (width, height), 'white')
@@ -58,7 +58,7 @@ def create_receipt_image(restaurant_name, items, total_amount):
 def get_current_time():
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 
-# 3. 주문 폼 함수
+# 3. 주문 폼 함수 (숫자 키패드 강제 입력 방식)
 def display_order_form(is_wholesale):
     data = sheet_products.get_all_records()
     cats = {}
@@ -80,11 +80,20 @@ def display_order_form(is_wholesale):
                 st.write(f"### {name}")
                 st.write(f"{name_en} / {price} THB")
                 
-                qty = st.number_input(f"{name} 수량", min_value=0, step=1, value=0, key=f"{'w_' if is_wholesale else 'r_'}{name}")
+                # HTML을 사용하여 숫자 키패드 호출 및 숫자만 입력 가능하도록 설정
+                qty_input = st.text_input(
+                    f"{name} 수량", 
+                    value="", 
+                    key=f"{'w_' if is_wholesale else 'r_'}{name}",
+                    help="숫자만 입력하세요"
+                )
+                
+                # 숫자만 처리
+                qty = int(qty_input) if qty_input and qty_input.isdigit() else 0
                 
                 if qty > 0:
-                    selected_items.append({"name": name, "name_en": name_en, "qty": int(qty), "price": price})
-                    total_price += price * int(qty)
+                    selected_items.append({"name": name, "name_en": name_en, "qty": qty, "price": price})
+                    total_price += price * qty
                 st.divider()
     return selected_items, total_price
 
@@ -144,5 +153,12 @@ with tab3:
     st.header("📝 회원가입")
     rest_name = st.text_input("식당 이름"); phone = st.text_input("전화번호 뒷번호"); addr = st.text_input("주소")
     if st.button("가입 신청"):
-        sheet_users.append_row([rest_name, phone, addr, "대기"]); st.success
+        sheet_users.append_row([rest_name, phone, addr, "대기"]); st.success("신청 완료!")
 
+with tab4:
+    st.header("⚙️ 관리자")
+    if st.text_input("비밀번호", type="password") == "4419":
+        for i, row in enumerate(sheet_users.get_all_values()[1:], start=2):
+            if st.button(f"{row[0]} 승인", key=f"app_{i}"): sheet_users.update_cell(i, 4, "승인"); st.rerun()
+
+            
