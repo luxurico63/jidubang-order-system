@@ -126,6 +126,29 @@ with tab1:
         if total > 0 and st.button("홈 딜리버리 주문 확정", key="btn_home"):
             item_str = ", ".join([f"{i['name']} {i['qty']}개" for i in items])
             sheet_orders.append_row([get_current_time(), address, item_str, total, "홈딜리버리"])
-            st.session_state['receipt_
-
+            st.session_state['receipt_bytes'] = create_receipt_image("홈 딜리버리", items, total)
+            st.rerun()
             
+    if st.session_state['receipt_bytes']:
+        st.image(st.session_state['receipt_bytes'])
+        st.download_button(
+            label="📥 이미지 저장", 
+            data=st.session_state['receipt_bytes'], 
+            file_name="주문.jpg", 
+            mime="image/jpeg", 
+            key="dl_home"
+        )
+
+with tab2:
+    if not st.session_state['logged_in']:
+        with st.form("login_form"):
+            login_name = st.text_input("식당 이름")
+            login_phone = st.text_input("전화번호 뒷번호")
+            if st.form_submit_button("로그인"):
+                all_users = sheet_users.get_all_values()[1:]
+                user_info = next((u for u in all_users if u[0].strip() == login_name.strip() and u[1].strip() == login_phone.strip()), None)
+                if user_info and user_info[3] == "승인":
+                    st.session_state['logged_in'] = True
+                    st.session_state['user'] = login_name
+                    st.rerun()
+    else:
