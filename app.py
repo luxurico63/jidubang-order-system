@@ -123,7 +123,7 @@ def display_order_form(is_wholesale):
 
 # 3. 메인 UI
 # 헤더 이미지는 컨테이너를 써서 레이아웃을 잡아주면 더 깔끔해!
-st.image("hhttps://drive.google.com/uc?export=view&id=1CjaV8GWqYNol-1x2SPoLUEn9VN0vkq8", use_column_width=True)
+st.image("https://drive.google.com/uc?export=view&id=1CjaV8GWqYNol-1x2SPoLUEn9VN0vkq8", use_column_width=True)
 
 tab1, tab2, tab3, tab4 = st.tabs(["🏠 홈 딜리버리", "📦 도매 주문", "📝 회원가입", "⚙️ 관리자"])
 
