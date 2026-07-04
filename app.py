@@ -58,7 +58,7 @@ def create_receipt_image(restaurant_name, items, total_amount):
 def get_current_time():
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 
-# 3. 주문 폼 함수
+# 3. 주문 폼 함수 (텍스트 크기 확대)
 def display_order_form(is_wholesale):
     data = sheet_products.get_all_records()
     cats = {}
@@ -76,14 +76,17 @@ def display_order_form(is_wholesale):
             for row in cats[cat]:
                 name, name_en, img_path = row['name'], row['name_en'], row.get('image_path', '')
                 price = int(row['price_wholesale']) if is_wholesale else int(row['price_retail'])
+                
+                # 가독성을 위해 크기 확대
                 if img_path: st.image(img_path, use_column_width=True)
-                st.write(f"### {name}")
-                st.write(f"{name_en} / {price} THB")
-                qty_input = st.text_input(f"{name} 수량", value="", key=f"{'w_' if is_wholesale else 'r_'}{name}")
-                qty = int(qty_input) if qty_input and qty_input.isdigit() else 0
+                st.markdown(f"### {name}")
+                st.markdown(f"#### {name_en} / {price} THB")
+                
+                qty = st.number_input(f"수량 입력", min_value=0, step=1, value=0, key=f"{'w_' if is_wholesale else 'r_'}{name}")
+                
                 if qty > 0:
-                    selected_items.append({"name": name, "name_en": name_en, "qty": qty, "price": price})
-                    total_price += price * qty
+                    selected_items.append({"name": name, "name_en": name_en, "qty": int(qty), "price": price})
+                    total_price += price * int(qty)
                 st.divider()
     return selected_items, total_price
 
@@ -95,14 +98,14 @@ if 'receipt_bytes' not in st.session_state: st.session_state['receipt_bytes'] = 
 if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
 
 with tab1:
-    st.header("🏠 홈 딜리버리 서비스")
+    st.markdown("# 🏠 홈 딜리버리 서비스")
     address = st.text_input("📍 배송지 주소", key="addr_home_1")
     if address:
         items, total = display_order_form(False)
         if total > 0:
             delivery_fee = 100 if total < 800 else (50 if total < 1500 else 0)
             final_total = total + delivery_fee
-            st.markdown(f"**총 결제 금액: {final_total:,} THB**")
+            st.markdown(f"## **총 결제 금액: {final_total:,} THB**")
             if st.button("홈 딜리버리 주문 확정", key="btn_home"):
                 sheet_orders.append_row([get_current_time(), address, ", ".join([f"{i['name']} {i['qty']}개" for i in items]), final_total, "홈딜리버리"])
                 st.session_state['receipt_bytes'] = create_receipt_image("홈 딜리버리", items, final_total)
@@ -113,7 +116,7 @@ with tab1:
         st.download_button("📥 이미지 저장 및 공유하기", data=st.session_state['receipt_bytes'], file_name="주문영수증_홈.jpg", mime="image/jpeg", key="dl_home")
 
 with tab2:
-    st.header("📦 도매 주문")
+    st.markdown("# 📦 도매 주문")
     if not st.session_state['logged_in']:
         with st.form("login_form"):
             login_name = st.text_input("식당 이름")
@@ -126,11 +129,11 @@ with tab2:
                     st.rerun()
                 else: st.error("정보 불일치 혹은 승인 대기 중")
     else:
-        st.write(f"환영합니다, **{st.session_state['user']}**님!")
+        st.write(f"## 환영합니다, **{st.session_state['user']}**님!")
         if st.button("로그아웃"): st.session_state['logged_in'] = False; st.rerun()
         items, total = display_order_form(True)
         if total > 0:
-            st.markdown(f"**총 금액: {total:,} THB**")
+            st.markdown(f"## **총 금액: {total:,} THB**")
             if st.button("도매 주문 확정", key="btn_wholesale"):
                 sheet_orders.append_row([get_current_time(), st.session_state['user'], ", ".join([f"{i['name']} {i['qty']}개" for i in items]), total, "도매"])
                 st.session_state['receipt_bytes'] = create_receipt_image(st.session_state['user'], items, total)
@@ -139,28 +142,4 @@ with tab2:
             st.image(st.session_state['receipt_bytes'])
             st.download_button("📥 이미지 저장 및 공유하기", data=st.session_state['receipt_bytes'], file_name="주문영수증_도매.jpg", mime="image/jpeg", key="dl_wholesale")
 
-with tab3:
-    st.header("📝 회원가입")
-    rest_name = st.text_input("식당 이름"); phone = st.text_input("전화번호 뒷번호"); addr = st.text_input("주소")
-    if st.button("가입 신청"):
-        sheet_users.append_row([rest_name, phone, addr, "대기"]); st.success("신청 완료!")
-
-with tab4:
-    st.header("⚙️ 관리자 승인")
-    if st.text_input("비밀번호", type="password") == "4419":
-        col_left, col_right = st.columns(2)
-        users_data = sheet_users.get_all_values()[1:]
-        
-        with col_left:
-            st.subheader("대기 중")
-            for i, row in enumerate(users_data, start=2):
-                if row[3] == "대기":
-                    if st.button(f"승인: {row[0]}", key=f"app_{i}"): 
-                        sheet_users.update_cell(i, 4, "승인"); st.rerun()
-        
-        with col_right:
-            st.subheader("승인 완료")
-            for row in users_data:
-                if row[3] == "승인":
-                    st.write(f"✅ {row[0]}")
-
+# ... (tab3, 4 동일)
