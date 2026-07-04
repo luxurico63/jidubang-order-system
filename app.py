@@ -6,12 +6,18 @@ import os
 from PIL import Image, ImageDraw, ImageFont
 import io
 
-# 1. 설정 및 탭별 맞춤 사이즈 CSS
-st.set_page_config(page_title="지두방 발주 시스템", layout="centered")
+# 1. 설정 및 탭 맞춤 배치 CSS
+st.set_page_config(page_title="지두방 발주 시스템", layout="wide") # 우측 배치를 위해 넓은 화면(wide) 권장
 
 st.markdown("""
     <style>
-    /* 1번(홈 딜리버리), 2번(도매 주문) 탭 크기 및 글씨 조정 (30% 축소) */
+    /* 탭 컨테이너 영역 확보 (우측으로 밀기 위해 필요) */
+    div[data-testid="stTabs"] > div[role="tablist"] {
+        width: 100%;
+        display: flex;
+    }
+    
+    /* 1번(홈 딜리버리), 2번(도매 주문) 탭 크기 및 글씨 조정 */
     button[data-baseweb="tab"]:nth-child(1),
     button[data-baseweb="tab"]:nth-child(2) {
         height: 70px !important;
@@ -22,6 +28,11 @@ st.markdown("""
     button[data-baseweb="tab"]:nth-child(2) div p {
         font-size: 25px !important;
         font-weight: bold !important;
+    }
+    
+    /* 🔥 핵심: 3번째 탭(회원가입)을 오른쪽 끝으로 밀어내기 (4번째 관리자 탭도 따라감) */
+    button[data-baseweb="tab"]:nth-child(3) {
+        margin-left: auto !important;
     }
     
     /* 선택된 탭 텍스트 색상 포인트 */
@@ -111,7 +122,9 @@ def display_order_form(is_wholesale):
     return selected_items, total_price
 
 # 3. 메인 UI
+# 헤더 이미지는 컨테이너를 써서 레이아웃을 잡아주면 더 깔끔해!
 st.image("https://via.placeholder.com/1200x200?text=Jidubang+Order+System", use_column_width=True)
+
 tab1, tab2, tab3, tab4 = st.tabs(["🏠 홈 딜리버리", "📦 도매 주문", "📝 회원가입", "⚙️ 관리자"])
 
 if 'receipt_bytes' not in st.session_state: 
@@ -151,7 +164,10 @@ with tab2:
                     st.session_state['logged_in'] = True
                     st.session_state['user'] = login_name
                     st.rerun()
+                else:
+                    st.error("정보가 일치하지 않거나 승인 대기 중입니다.")
     else:
+        st.success(f"환영합니다, {st.session_state['user']}님!")
         if st.button("로그아웃"): 
             st.session_state['logged_in'] = False
             st.rerun()
@@ -174,28 +190,34 @@ with tab2:
             )
 
 with tab3:
+    st.subheader("회원가입 신청")
     with st.form("register_form"):
         rest_name = st.text_input("식당 이름")
-        phone = st.text_input("전화번호 뒷번호")
+        phone = st.text_input("전화번호 뒷번호 (예: 1234)")
         addr = st.text_input("주소")
         if st.form_submit_button("가입 신청"):
-            sheet_users.append_row([rest_name, phone, addr, "대기"])
-            st.success("신청 완료!")
+            if rest_name and phone and addr:
+                sheet_users.append_row([rest_name, phone, addr, "대기"])
+                st.success("신청이 완료되었습니다! 관리자 승인 후 이용 가능합니다.")
+            else:
+                st.warning("모든 항목을 입력해 주세요.")
 
 with tab4:
+    st.subheader("관리자 페이지")
     if st.text_input("비밀번호", type="password") == "4419":
         col1, col2 = st.columns(2)
         users = sheet_users.get_all_values()[1:]
         
         with col1:
-            st.subheader("대기")
+            st.markdown("#### 대기 중인 식당")
             for i, row in enumerate(users, start=2):
-                if row[3] == "대기" and st.button(f"승인: {row[0]}", key=f"app_{i}"): 
-                    sheet_users.update_cell(i, 4, "승인")
-                    st.rerun()
+                if row[3] == "대기":
+                    if st.button(f"승인: {row[0]}", key=f"app_{i}"): 
+                        sheet_users.update_cell(i, 4, "승인")
+                        st.rerun()
                     
         with col2:
-            st.subheader("완료")
+            st.markdown("#### 승인 완료된 식당")
             for row in users:
                 if row[3] == "승인": 
                     st.write(f"✅ {row[0]}")
