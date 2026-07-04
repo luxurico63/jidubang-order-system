@@ -6,24 +6,25 @@ import os
 from PIL import Image, ImageDraw, ImageFont
 import io
 
-# 1. 설정 및 탭 사이즈 대폭 확대 CSS
+# 1. 설정 및 탭별 맞춤 사이즈 CSS
 st.set_page_config(page_title="지두방 발주 시스템", layout="centered")
 
 st.markdown("""
     <style>
-    /* 탭 헤더 영역 크기 강제 확대 */
-    button[data-baseweb="tab"] {
-        height: 100px !important;
-        padding: 0 40px !important;
+    /* 1번(홈 딜리버리), 2번(도매 주문) 탭 크기 및 글씨 조정 (30% 축소) */
+    button[data-baseweb="tab"]:nth-child(1),
+    button[data-baseweb="tab"]:nth-child(2) {
+        height: 70px !important;
+        padding: 0 20px !important;
     }
     
-    /* 탭 내부 텍스트 크기 강제 확대 */
-    button[data-baseweb="tab"] div p {
-        font-size: 35px !important;
+    button[data-baseweb="tab"]:nth-child(1) div p,
+    button[data-baseweb="tab"]:nth-child(2) div p {
+        font-size: 25px !important; /* 기존 35px에서 축소 */
         font-weight: bold !important;
     }
     
-    /* 선택된 탭 텍스트 색상 변경 (옵션) */
+    /* 선택된 탭 텍스트 색상 포인트 */
     button[data-baseweb="tab"][aria-selected="true"] div p {
         color: #FF4B4B !important;
     }
@@ -125,76 +126,6 @@ with tab1:
             st.session_state['receipt_bytes'] = create_receipt_image("홈 딜리버리", items, total)
             st.rerun()
             
-    if st.session_state['receipt_bytes']:
-        st.image(st.session_state['receipt_bytes'])
-        # 긴 코드를 잘리지 않게 줄바꿈 처리
-        st.download_button(
-            label="📥 이미지 저장", 
-            data=st.session_state['receipt_bytes'], 
-            file_name="주문.jpg", 
-            mime="image/jpeg", 
-            key="dl_home"
-        )
+    if st.session_state['receipt_bytes
 
-with tab2:
-    if not st.session_state['logged_in']:
-        with st.form("login_form"):
-            login_name = st.text_input("식당 이름")
-            login_phone = st.text_input("전화번호 뒷번호")
-            if st.form_submit_button("로그인"):
-                all_users = sheet_users.get_all_values()[1:]
-                user_info = next((u for u in all_users if u[0].strip() == login_name.strip() and u[1].strip() == login_phone.strip()), None)
-                if user_info and user_info[3] == "승인":
-                    st.session_state['logged_in'] = True
-                    st.session_state['user'] = login_name
-                    st.rerun()
-    else:
-        if st.button("로그아웃"): 
-            st.session_state['logged_in'] = False
-            st.rerun()
-            
-        items, total = display_order_form(True)
-        if total > 0 and st.button("도매 주문 확정", key="btn_wholesale"):
-            item_str = ", ".join([f"{i['name']} {i['qty']}개" for i in items])
-            sheet_orders.append_row([get_current_time(), st.session_state['user'], item_str, total, "도매"])
-            st.session_state['receipt_bytes'] = create_receipt_image(st.session_state['user'], items, total)
-            st.rerun()
-            
-        if st.session_state['receipt_bytes']:
-            st.image(st.session_state['receipt_bytes'])
-            # 긴 코드를 잘리지 않게 줄바꿈 처리
-            st.download_button(
-                label="📥 이미지 저장", 
-                data=st.session_state['receipt_bytes'], 
-                file_name="주문.jpg", 
-                mime="image/jpeg", 
-                key="dl_wholesale"
-            )
-
-with tab3:
-    with st.form("register_form"):
-        rest_name = st.text_input("식당 이름")
-        phone = st.text_input("전화번호 뒷번호")
-        addr = st.text_input("주소")
-        if st.form_submit_button("가입 신청"):
-            sheet_users.append_row([rest_name, phone, addr, "대기"])
-            st.success("신청 완료!")
-
-with tab4:
-    if st.text_input("비밀번호", type="password") == "4419":
-        col1, col2 = st.columns(2)
-        users = sheet_users.get_all_values()[1:]
-        
-        with col1:
-            st.subheader("대기")
-            for i, row in enumerate(users, start=2):
-                if row[3] == "대기" and st.button(f"승인: {row[0]}", key=f"app_{i}"): 
-                    sheet_users.update_cell(i, 4, "승인")
-                    st.rerun()
-                    
-        with col2:
-            st.subheader("완료")
-            for row in users:
-                if row[3] == "승인": 
-                    st.write(f"✅ {row[0]}")
-
+    
