@@ -20,7 +20,7 @@ st.markdown("""
     
     button[data-baseweb="tab"]:nth-child(1) div p,
     button[data-baseweb="tab"]:nth-child(2) div p {
-        font-size: 25px !important; /* 기존 35px에서 축소 */
+        font-size: 25px !important;
         font-weight: bold !important;
     }
     
@@ -88,12 +88,15 @@ def display_order_form(is_wholesale):
         cats[cat].append(row)
         
     cat_tabs = st.tabs(list(cats.keys()))
-    selected_items, total_price = [], 0
+    selected_items = []
+    total_price = 0
     
     for i, cat in enumerate(cats.keys()):
         with cat_tabs[i]:
             for row in cats[cat]:
-                name, name_en, img_path = row['name'], row['name_en'], row.get('image_path', '')
+                name = row['name']
+                name_en = row['name_en']
+                img_path = row.get('image_path', '')
                 price = int(row['price_wholesale']) if is_wholesale else int(row['price_retail'])
                 
                 if img_path: 
@@ -123,9 +126,6 @@ with tab1:
         if total > 0 and st.button("홈 딜리버리 주문 확정", key="btn_home"):
             item_str = ", ".join([f"{i['name']} {i['qty']}개" for i in items])
             sheet_orders.append_row([get_current_time(), address, item_str, total, "홈딜리버리"])
-            st.session_state['receipt_bytes'] = create_receipt_image("홈 딜리버리", items, total)
-            st.rerun()
-            
-    if st.session_state['receipt_bytes
+            st.session_state['receipt_
 
-    
+            
