@@ -152,3 +152,51 @@ with tab2:
                     st.session_state['user'] = login_name
                     st.rerun()
     else:
+        if st.button("로그아웃"): 
+            st.session_state['logged_in'] = False
+            st.rerun()
+            
+        items, total = display_order_form(True)
+        if total > 0 and st.button("도매 주문 확정", key="btn_wholesale"):
+            item_str = ", ".join([f"{i['name']} {i['qty']}개" for i in items])
+            sheet_orders.append_row([get_current_time(), st.session_state['user'], item_str, total, "도매"])
+            st.session_state['receipt_bytes'] = create_receipt_image(st.session_state['user'], items, total)
+            st.rerun()
+            
+        if st.session_state['receipt_bytes']:
+            st.image(st.session_state['receipt_bytes'])
+            st.download_button(
+                label="📥 이미지 저장", 
+                data=st.session_state['receipt_bytes'], 
+                file_name="주문.jpg", 
+                mime="image/jpeg", 
+                key="dl_wholesale"
+            )
+
+with tab3:
+    with st.form("register_form"):
+        rest_name = st.text_input("식당 이름")
+        phone = st.text_input("전화번호 뒷번호")
+        addr = st.text_input("주소")
+        if st.form_submit_button("가입 신청"):
+            sheet_users.append_row([rest_name, phone, addr, "대기"])
+            st.success("신청 완료!")
+
+with tab4:
+    if st.text_input("비밀번호", type="password") == "4419":
+        col1, col2 = st.columns(2)
+        users = sheet_users.get_all_values()[1:]
+        
+        with col1:
+            st.subheader("대기")
+            for i, row in enumerate(users, start=2):
+                if row[3] == "대기" and st.button(f"승인: {row[0]}", key=f"app_{i}"): 
+                    sheet_users.update_cell(i, 4, "승인")
+                    st.rerun()
+                    
+        with col2:
+            st.subheader("완료")
+            for row in users:
+                if row[3] == "승인": 
+                    st.write(f"✅ {row[0]}")
+
